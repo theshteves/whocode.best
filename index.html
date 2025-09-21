@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Weaver on-demand 🚨🚒🥦🥦</title>
+		<link rel="icon" type="image/x-icon" href="favicon.ico">
+
+		<!-- Load CodeMirror -->
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
+
+		<style>
+body { font-family: sans-serif; margin: 0; padding: 20px; background-color: #dddddd; }
+.btn { margin: 0 5px; padding: 8px 16px; font-size: 16px; cursor: pointer; }
+.button-group { display: flex; align-items: center; margin: 10px 0; }
+.CodeMirror { 
+	border: 1px solid #ddd;
+	height: 400px;
+	font-size: 14px;
+}
+
+.output-container {
+	display: flex;
+	gap: 15px;
+	margin-top: 20px;
+	overflow-x: auto;
+	padding-bottom: 10px;
+}
+
+.output-panel {
+	min-width: 150px;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.output-panel h3 {
+	margin: 0 0 10px 0;
+	font-size: 1.1em;
+	text-align: center;
+	position: relative;
+}
+
+.output {
+	flex: 1;
+	background: #f5f5f5;
+	padding: 10px;
+	border: 1px solid #ddd;
+	overflow: auto;
+	white-space: pre;
+	font-family: monospace;
+	position: relative;
+	line-height: 1.3;
+	min-height: 200px;
+}
+
+.output:hover {
+	background-color: #e5e5e5;
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  70% { opacity: 0.8; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+.output {
+  flex: 1;
+  overflow: auto;
+  background: #f5f5f5;
+  padding: 10px;
+  border: 1px solid #ddd;
+  white-space: pre;
+  font-family: monospace;
+  line-height: 1.3;
+  min-height: 200px;
+}
+
+.output-panel h3.copied {
+  color: #4CAF50;
+  animation: fadeOut 1s forwards;
+}
+
+
+					#version {
+						color: #aaaaaa;
+					}
+					#run {
+						margin: 10px 0;
+						padding: 8px 16px;
+						font-size: 16px;
+						cursor: pointer;
+						background-color: greenyellow;
+						transform: translate(1em) rotate(-3deg);
+					}
+#run::after { content: "Compile my slop"; }
+					#run:hover {
+						background-color: darkorange;
+						transform: rotate(7deg);
+						margin-left: 2.5rem;
+						margin-right: -1rem;
+					}
+					#run:hover::after {
+						content: "COMPILE MAH SLOP";
+}
+					#run:active {
+						color: greenyellow;
+						background-color: red;
+						transform: translate(-1em, 2em) rotate(156deg);
+					}
+					#run:active::after {
+						content: "ouch";
+						pointer-events: none;
+}
+					#output {
+						background: #f5f5f5;
+						padding: 10px;
+						border: 1px solid #ddd;
+						min-height: 100px;
+						white-space: pre-wrap;
+						font-family: monospace;
+						cursor: pointer;
+						position: relative;
+						transition: background-color 0.2s;
+					}
+					#output:hover {
+						background-color: #eee;
+					}
+					#output.copied::after {
+						content: '✓ Copied to clipboard!';
+						position: absolute;
+						top: -7rem;
+						right: 1rem;
+						font-size: 64pt;
+						color: #4CAF50;
+						animation: fadeOut 2s forwards;
+					}
+					@keyframes fadeOut {
+						0% { opacity: 1; }
+						70% { opacity: 1; }
+						100% { opacity: 0; }
+					}
+		</style>
+	</head>
+
+	<body>
+		<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1em;">
+			<h1 style="font-family: serif; margin: 0;">Do you even code <span style="color: seagreen;">Weaver</span>? 👀</h1>
+			<div style="display: flex; align-items: center;">
+				<label for="preset-select" style="margin-right: 10px; font-family: sans-serif;">You're not you when you're hungry...  Try a template!</label>
+				<select id="preset-select" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd; font-family: monospace;">
+            <option value="default">Split</option>
+            <option value="buffer">Buffer</option>
+            <option value="hse_buffer">Buffer (optimized)</option>
+            <option value="copy">Copy</option>
+            <option value="func">Function</option>
+            <option value="merge">Merge</option>
+            <option value="adder">Adder</option>
+            <option value="s_adder">Adder (serial)</option>
+            <option value="cpu">CPU</option>
+            <option value="fpga">Novel ultra-low-power CGRA</option>
+        </select>
+    </div>
+</div>
+		<textarea id="editor">//Your slop not found ...yet</textarea>
+		<div class="button-group">
+			<button id="copy" class="btn" title="Copy to clipboard">📋 copy Weaver to clipboard</button>
+			<button id="run" class="btn"></button>
+			<div style="margin-left: 2rem;">with <a target="_blank" href="https://broccolimicro.io">Loom</a> <span id="version">v0.14.0</span></div>
+		</div>
+		<div class="output-container">
+			<div class="output-panel">
+				<h3>Petri Net</h3>
+				<div id="output-chp-raw" class="output"></div>
+			</div>
+			<div class="output-panel">
+				<h3>Petri Net (canonical)</h3>
+				<div id="output-chp-canonical" class="output"></div>
+			</div>
+			<div class="output-panel">
+				<h3>Flow IR</h3>
+				<div id="output-flow" class="output"></div>
+			</div>
+			<div class="output-panel">
+				<h3>Verilog</h3>
+				<div id="output-verilog" class="output"></div>
+			</div>
+		</div>
+
+		<script type="module">
+			document.addEventListener('DOMContentLoaded', () => {
+				// Initialize CodeMirror
+				const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+						lineNumbers: true,
+						mode: 'text/x-c++src',
+						theme: 'default',
+						indentUnit: 4,
+						matchBrackets: true,
+						autoCloseBrackets: true
+				});
+
+				// Define presets
+			const presets = {
+				'default': '\/\/ Your slop code ain\'t gonna write itself!\n\/\/ Click `Run` or press `Shift+Enter` to optimize your slop 💀💀\n\nwhile {\n  l = L.recv();\n  c = Cc.probe();\n\n  if c == 0 {\n    R0.send(l)\n\n  } or if c == 1 {\n    R1.send(l)\n  }\n  Cc.recv()\n}',
+				'buffer': 'while {\n  l = L.recv(); R.send(l)\n}',
+				'hse_buffer': '\/\/ Sneak peak at another lower, near-wire-level internal representation\n\/\/ NOTE: this builds, but that subsystem is stripped out here to keep this site blazing fast\n\/\/ Weaver doesn\'t look half-bad now by comparison, huh?\n\/\/ We ship 10x faster\n\nregion 1 {\n    L.f- and L.t-\n    await L.e\n    while {\n      L.f+ xor L.t+\n      await ~L.e\n      L.f- and L.t-\n      await L.e\n    }\n  } and {\n    L.e+ and R.f- and R.t-\n    await R.e & ~L.f & ~L.t\n    while {\n      await R.e & L.f {\n        R.f+\n      } or await R.e & L.t {\n        R.t+\n      }\n      L.e-\n      await ~R.e & ~L.f & ~L.t\n      R.f- and R.t-\n      L.e+\n    }\n  } and region 1 {\n    R.e+\n    await ~R.f & ~R.t\n    while {\n      await R.f | R.t\n      R.e-\n      await ~R.f & ~R.t\n      R.e+\n    }\n  }',
+				'merge': 'while {\n  c = Cc.recv();\n\n  await c == 0 {\n    l = L0.recv()\n\n  } or await c == 1 {\n    l = L1.recv()\n  }\n  R.send(l)\n}',
+				'copy': 'while {\n  l = L.recv();\n  R0.send(l) and R1.send(l)\n}',
+				'func': 'while {\n  l0 = L0.recv() and l1 = L1.recv();\n  R.send(l0 | l1)\n}',
+				'adder': 'while {\n  S.send(A.recv() + B.recv())\n}',
+				's_adder': 'while {\n  WIDTH=16;\n  s = (Ad.probe() + Bd.probe() + ci) % _.pow(2, WIDTH);\n  co = (Ad.probe() + Bd.probe() + ci) / _.pow(2, WIDTH);\n\n  await Ac.probe()==0 | Bc.probe()==0 | s[WIDTH] ~= ci {\n    Sc.send(0) and Sd.send(s[0:WIDTH]);\n    ci=co;\n\n    await Ac.probe()==0 {\n      Ac.recv() and Ad.recv()\n\n    } or await Ac.probe() ~= 0 {\n      skip \n\n    } and await Bc.probe()==0 {\n      Bc.recv() and Bd.recv()\n\n    } or await Bc.probe() ~= 0 {\n      skip\n    }\n\n  } or await Ac.probe()==1 & Bc.probe()==1 & co ~= ci {\n    Sc.send(1) and Sd.send(s[0:WIDTH]);\n    ci=co\n\n  } or await Ac.probe()==1 & Bc.probe()==1 & co==ci {\n    Sc.send(0) and Sd.send(s[0:WIDTH]);\n    ci=0;\n    Ac.recv() and Ad.recv() and Bc.recv() and Bd.recv()\n  }\n}',
+				'cpu': 'func imem(chan Addr, Rd) {\n  var fixed mem[256];\n  while {\n    Rd.send(mem[Addr.recv()])\n  }\n}\n\nfunc dmem(chan Addr, Cmd, Rd, Wr) {\n  var fixed mem[256];\n  while {\n    await Cmd.probe() == 0 {\n      Cmd.recv();\n      Rd.send(mem[Addr.recv()])\n    } or await Cmd.probe() == 1 {\n      Cmd.recv();\n      mem[Addr.recv()] = Wr.recv()\n    }\n  }\n}\n\nfunc fetch(chan Addr, Inc, Jmp) {\n  var fixed pc = 0;\n  while {\n    Addr.send(pc);\n    await Jmp.probe() {\n      pc = Jmp.recv()\n    } or await Inc.probe() {\n      Inc.recv();\n      pc = pc + 1\n    }\n  }\n}\n\n\/\/ 0: add rd, rs, rt\n\/\/ 1: mul rd, rs, rt\n\/\/ 2: and rd, rs, rt\n\/\/ 3: or rd, rs, rt\n\/\/ 4: shl rd, rs, rt\n\/\/ 5: shr rd, rs, rt\n\/\/ 6: not rd, rs, _\n\/\/ 7: neg rd, rs, _\n\/\/ 8: imm rd, cnst, _\n\/\/ 9: ld rd, addr, _\n\/\/ 10: st _, addr, rt\n\/\/ 11: bz _, addr, rt\n\/\/ 12: blz _, addr, rt\n\/\/ 13: jmp _, addr, _\nfunc decode(chan InsRd, Alu, Rs, Rt, Rd, DataAddr, DataCmd, DataRd, DataWr, Inc, Jmp) {\n  var fixed reg[16];\n  while {\n    op = InsRd.recv();\n    fn = op[0:4];\n    rs = op[4:8];\n    rt = op[8:12];\n    rd = op[12:16];\n    await fn < 8 { \/\/ alu operations    \n      Alu.send(fn[0:3]);\n      Rs.send(rf[rs])\n        await fn < 6 {\n          Rt.send(rf[rt])\n        } or await fn >= 6 {\n          skip\n        }\n      rf[rd] = Rd.recv()\n    } or await fn == 8 { \/\/ imm\n      rf[rd] = rs\n    } or await fn == 9 { \/\/ ld\n      DataCmd.send(0);\n      DataAddr.send(rs);\n      rf[rd] = DataRd.recv()\n    } or await fn == 10 { \/\/ st\n      DataCmd.send(1);\n      DataAddr.send(rs);\n      DataWr.send(rf[rt])\n    } or await fn == 11 {\n      await rf[rt] == 0 {\n        Jmp.send(rs)\n      } or await rf[rt] ~= 0 {\n        Inc.send()\n      }\n    } or await fn == 12 {\n      await rf[rt] < 0 {\n        Jmp.send(rs)\n      } or await rf[rt] ~= 0 {\n        Inc.send()\n      }\n    } or await fn == 13 {\n      Jmp.send(rs)\n    }\n  }\n}\n\nfunc execute(chan Fn, A, B, R) {\n  while {\n    await Fn.probe() == 0 & A.probe() & B.probe() { \/\/ add\n      R.send(A.recv() + B.recv())\n    } or await Fn.probe() == 1 & A.probe() & B.probe() { \/\/ mul\n      R.send(A.recv() * B.recv())\n    } or await Fn.probe() == 2 & A.probe() & B.probe() { \/\/ and\n      R.send(A.recv() && B.recv())\n    } or await Fn.probe() == 3 & A.probe() & B.probe() { \/\/ or\n      R.send(A.recv() || B.recv())\n    } or await Fn.probe() == 4 & A.probe() & B.probe() { \/\/ shl\n      R.send(A.recv() << B.recv())\n    } or await Fn.probe() == 5 & A.probe() & B.probe() { \/\/ shr\n      R.send(A.recv() >> B.recv())\n    } or await Fn.probe() == 6 & A.probe() { \/\/ not\n      R.send(!A.recv())\n    } or await Fn.probe() == 7 & A.probe() { \/\/ neg\n      R.send(-A.recv())\n    }\n  }\n}\n\nfunc cpu(chan InsAddr, InsRd, DataAddr, DataCmd, DataRd, DataWr) {\n  var chan Inc, Jmp, Fn, Rs, Rt, Rd, Mem, Wb;\n  fetch(InsAddr, Inc, Jmp) and\n    decode(InsRd, Fn, Rs, Rt, Rd, DataAddr, DataCmd, DataRd, DataWr, Inc, Jmp) and\n    execute(Fn, Rs, Rt, Rd)\n}',
+				'fpga': '\/\/ Oh, you want to talk research?\n\/\/ Let\'s talk partnerships.\n\n\/\/  Call me: (313) 670-3532\n\/\/ Email me: steven.kneiser@broccolimicro.io\n\/\/    DM me: https:\/\/linkedin.com/in/stevenkneiser\n\n\/\/ We\'re accelerating the time-to-market of new hardware in America'
+			};
+
+			// Set default code
+			editor.setValue(presets['default']);
+
+			// Handle preset selection
+			document.getElementById('preset-select').addEventListener('change', (e) => {
+				const selectedPreset = e.target.value;
+				if (presets[selectedPreset]) {
+					editor.setValue(presets[selectedPreset]);
+				}
+			});
+
+					// Get output elements
+					const outputChpRaw = document.getElementById('output-chp-raw');
+					const outputChpCanonical = document.getElementById('output-chp-canonical');
+					const outputFlow = document.getElementById('output-flow');
+					const outputVerilog = document.getElementById('output-verilog');
+					const runButton = document.getElementById('run');
+					const copyButton = document.getElementById('copy');
+
+				// Function to copy text to clipboard with visual feedback
+					async function copyToClipboard(text, element) {
+						try {
+							await navigator.clipboard.writeText(text);
+							// Find the h3 element in the same output panel
+							const panel = element.closest('.output-panel');
+							if (panel) {
+								const title = panel.querySelector('h3');
+								if (title) {
+									const originalText = title.textContent;
+									title.textContent = '✓ Copied!';
+									title.classList.add('copied');
+									setTimeout(() => {
+										title.textContent = originalText;
+										title.classList.remove('copied');
+									}, 1000);
+								}
+							}
+						} catch (err) {
+							try {
+								// Fallback for older browsers
+								const textArea = document.createElement('textarea');
+								textArea.value = text;
+								document.body.appendChild(textArea);
+								textArea.select();
+								document.execCommand('copy');
+								document.body.removeChild(textArea);
+							} catch (err) {
+								console.error('Failed to copy text: ', err);
+							}
+						}
+					}
+
+					// Make all output panels clickable to copy their text
+					[outputChpRaw, outputChpCanonical, outputFlow, outputVerilog].forEach(output => {
+						output.addEventListener('click', () => {
+							if (output.textContent.trim()) {
+								copyToClipboard(output.textContent, output);
+							}
+						});
+					});
+
+				// Load and initialize WASM module
+				(async function() {
+						try {
+								outputChpRaw.textContent = 'Loading WebAssembly module...';
+
+								// Import and initialize the WebAssembly module
+								console.log('Importing wasm.js...');
+								const wasmImport = await import('./wasm.js');
+								console.log('wasm.js imported:', wasmImport);
+
+								const createModule = wasmImport.default;
+								console.log('createModule:', createModule);
+
+								try {
+										console.log('Creating module instance...');
+										const Module = await createModule({
+												// Optional: Add any module initialization options here
+												// For example:
+												locateFile: (path) => {
+														console.log('Locating file:', path);
+														return `./${path}`;
+												},
+												onRuntimeInitialized: () => {
+														console.log('Runtime initialized');
+												},
+												print: (text) => console.log('WASM stdout:', text),
+												printErr: (text) => console.error('WASM stderr:', text)
+										});
+
+										console.log('Module created:', Module);
+
+										// Call our init function
+										if (typeof Module._init === 'function') {
+												console.log('Calling _init');
+												Module._init();
+										}
+
+										// Store the module for later use
+										window.Module = Module;
+
+										// Enable the run button
+										runButton.disabled = false;
+										outputChpRaw.textContent = 'Compiler ready & waiting...'; //'Ready. Click Run to execute your code.';
+
+										// Function to free memory allocated by WebAssembly
+										function freeString(ptr) {
+												if (Module && Module._free) {
+														Module._free(ptr);
+												}
+										}
+
+										// Function to execute the code
+							async function executeCode() {
+												const outputs = [outputChpRaw, outputChpCanonical, outputFlow, outputVerilog];
+												outputs.forEach(out => out.textContent = 'Running...');
+												
+												try {
+													const code = editor.getValue();
+													console.log('Running code:', code);
+
+													// Call the WebAssembly function
+													const resultPtr = Module.ccall(
+														'processLoomCode',  // function name
+														'number',           // return type (pointer)
+														['string'],         // argument types
+														[code]              // arguments
+													);
+
+													// Convert the result pointer to a JavaScript string
+													let result = '';
+													if (resultPtr) {
+														result = Module.UTF8ToString(resultPtr);
+														freeString(resultPtr); // Free the allocated memory
+													}
+
+													// Split the result into four parts (CHP Raw, CHP Canonical, Flow, Verilog)
+													const resultParts = result.split('\n---\n');
+													const chpRawResult = resultParts[0] || 'No CHP raw output';
+													const chpCanonicalResult = resultParts[1] || 'No CHP canonical output';
+													const flowResult = resultParts[2] || 'No Flow output';
+													const verilogResult = resultParts[3] || 'No Verilog output (coming soon)';
+													
+													// Update each output panel
+													outputChpRaw.textContent = chpRawResult;
+													outputChpCanonical.textContent = chpCanonicalResult;
+													outputFlow.textContent = flowResult;
+													outputVerilog.textContent = verilogResult;
+													
+													// Copy the flow output to clipboard by default
+													copyToClipboard(flowResult, outputFlow);
+												} catch (e) {
+													const errorMsg = 'Error executing code: ' + e;
+													outputs.forEach(out => out.textContent = errorMsg);
+													console.error('Execution error:', e);
+												}
+											}
+
+										// Add click handler for the run button
+										runButton.addEventListener('mousedown', executeCode);
+
+										// Add click handler for the copy button
+					copyButton.addEventListener('click', () => {
+						copyToClipboard(editor.getValue(), copyButton);
+						// Show checkmark in the button
+						const originalText = copyButton.textContent;
+						copyButton.textContent = ' ✓ copied Weaver to clipboard';
+						setTimeout(() => {
+							copyButton.textContent = originalText;
+						}, 2000);
+					});
+
+					// Add keyboard shortcut (Shift+Enter) to run the code
+					editor.on('keydown', function(cm, event) {
+						// Check if the key pressed was Enter (with or without Shift)
+						if (event.keyCode === 13 && (event.shiftKey || event.ctrlKey || event.metaKey)) {
+							// Prevent the default newline insertion
+							event.preventDefault();
+							// Run the code
+							executeCode();
+						}
+					});
+				} catch (e) {
+					const errorMsg = 'Error creating module: ' + e;
+					outputChpRaw.textContent = errorMsg;
+					console.error('Module creation error:', e);
+				}
+						} catch (e) {
+								const errorMsg = 'Error loading WebAssembly: ' + e;
+								outputChpRaw.textContent = errorMsg;
+								console.error('WASM load error:', e);
+						}
+				})();
+		});
+		</script>
+	</body>
+</html>
